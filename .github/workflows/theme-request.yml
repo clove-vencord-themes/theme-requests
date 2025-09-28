@@ -1,0 +1,17 @@
+name: Discord Theme Request Notification
+   on:
+     issues:
+       types: [opened]
+   jobs:
+     notify-discord:
+       if: contains(github.event.issue.labels.*.name, 'theme-request')
+       runs-on: ubuntu-latest
+       steps:
+         - name: Send Discord Notification
+           env:
+             DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+           run: |
+             curl -H "Content-Type: application/json" \
+                  -X POST \
+                  -d "{\"embeds\":[{\"title\":\"🎨 New Theme Request\",\"description\":\"**${{ github.event.issue.title }}**\",\"url\":\"${{ github.event.issue.html_url }}\",\"color\":3715860,\"fields\":[{\"name\":\"Submitted by\",\"value\":\"${{ github.event.issue.user.login }}\",\"inline\":true},{\"name\":\"Repository\",\"value\":\"theme-requests\",\"inline\":true}]}]}" \
+                  $DISCORD_WEBHOOK
