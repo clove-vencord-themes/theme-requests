@@ -1,12 +1,12 @@
 name: Discord Theme Request Notification
-   on:
-     issues:
-       types: [opened]
-   jobs:
-     notify-discord:
-       if: contains(github.event.issue.labels.*.name, 'theme-request')
-       runs-on: ubuntu-latest
-       steps:
+on:
+    issues:
+      types: [opened]
+jobs:
+    notify-discord:
+        if: contains(github.event.issue.labels.*.name, 'theme-request')
+        runs-on: ubuntu-latest
+        steps:
          - name: Send Discord Notification
            env:
              DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}

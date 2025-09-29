@@ -1,0 +1,80 @@
+name: 🎨 Theme Request
+description: Request a custom theme for Vencord or BetterDiscord
+title: "🎨 Theme Request: "
+labels: ["theme-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for requesting a theme! Please fill out the information below so we can understand your vision.
+
+  - type: input
+    id: theme_name
+    attributes:
+      label: Theme Name
+      description: What would you like to name this theme?
+      placeholder: "e.g., Neon Dreams, Dark Aurora, Minimal Green"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: theme_type
+    attributes:
+      label: Theme Type
+      description: Which platform(s) should this theme support?
+      options:
+        - Vencord
+        - BetterDiscord
+        - Both Vencord & BetterDiscord
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Theme Description
+      description: Describe your theme idea in detail. What colors, style, or specific features would you like? Include any inspiration or reference images if possible.
+      placeholder: |
+        I'd like a dark theme with neon green accents...
+        Color palette: #39FF14, #1a1a1a, #008B8B
+        Style: Modern, minimalistic with smooth animations
+        Inspiration: Cyberpunk aesthetics
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority Level
+      description: How urgently do you need this theme?
+      options:
+        - Low - Just an idea for the future
+        - Medium - Would be nice to have
+        - High - Really want this theme
+        - Urgent - Need this ASAP
+      default: 1
+    validations:
+      required: true
+
+  - type: input
+    id: contact_info
+    attributes:
+      label: Contact Information (Optional)
+      description: Discord username, email, or GitHub username for updates
+      placeholder: "e.g., discord.username, email@example.com, or @github-username"
+
+  - type: textarea
+    id: additional_notes
+    attributes:
+      label: Additional Notes
+      description: Any other details, specific requirements, or questions you have
+      placeholder: Any extra information that might help us create your perfect theme
+
+  - type: checkboxes
+    id: github_updates
+    attributes:
+      label: Notifications
+      description: How would you like to receive updates?
+      options:
+        - label: I'd like to receive updates via GitHub notifications
+          required: false
