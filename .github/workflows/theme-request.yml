@@ -12,69 +12,78 @@ jobs:
       - name: Send Discord Notification
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_USER: ${{ github.event.issue.user.login }}
+          ISSUE_CREATED: ${{ github.event.issue.created_at }}
         run: |
           # Extract theme type and priority from labels
           THEME_TYPE="Not specified"
           PRIORITY="Not specified"
           
+          LABELS="${{ join(github.event.issue.labels.*.name, ' ') }}"
+          
           # Parse labels for theme type
-          if echo "${{ join(github.event.issue.labels.*.name, ' ') }}" | grep -q "type:vencord"; then
+          if echo "$LABELS" | grep -q "type:vencord"; then
             THEME_TYPE="Vencord"
-          elif echo "${{ join(github.event.issue.labels.*.name, ' ') }}" | grep -q "type:betterdiscord"; then
+          elif echo "$LABELS" | grep -q "type:betterdiscord"; then
             THEME_TYPE="BetterDiscord"
-          elif echo "${{ join(github.event.issue.labels.*.name, ' ') }}" | grep -q "type:both"; then
+          elif echo "$LABELS" | grep -q "type:both"; then
             THEME_TYPE="Both"
           fi
           
           # Parse labels for priority
-          if echo "${{ join(github.event.issue.labels.*.name, ' ') }}" | grep -q "priority:low"; then
+          if echo "$LABELS" | grep -q "priority:low"; then
             PRIORITY="🟢 Low"
-          elif echo "${{ join(github.event.issue.labels.*.name, ' ') }}" | grep -q "priority:medium"; then
+          elif echo "$LABELS" | grep -q "priority:medium"; then
             PRIORITY="🟡 Medium"
-          elif echo "${{ join(github.event.issue.labels.*.name, ' ') }}" | grep -q "priority:high"; then
+          elif echo "$LABELS" | grep -q "priority:high"; then
             PRIORITY="🟠 High"
-          elif echo "${{ join(github.event.issue.labels.*.name, ' ') }}" | grep -q "priority:urgent"; then
+          elif echo "$LABELS" | grep -q "priority:urgent"; then
             PRIORITY="🔴 Urgent"
           fi
           
-          # Get issue body preview (first 500 chars)
-          BODY_PREVIEW=$(echo '${{ github.event.issue.body }}' | head -c 500)
+          # Create JSON payload
+          cat << EOF > payload.json
+          {
+            "embeds": [{
+              "title": "🎨 New Theme Request",
+              "description": "**${ISSUE_TITLE}**",
+              "url": "${ISSUE_URL}",
+              "color": 3715860,
+              "fields": [
+                {
+                  "name": "👤 Submitted by",
+                  "value": "[${ISSUE_USER}](https://github.com/${ISSUE_USER})",
+                  "inline": true
+                },
+                {
+                  "name": "🎯 Theme Type",
+                  "value": "${THEME_TYPE}",
+                  "inline": true
+                },
+                {
+                  "name": "⚡ Priority",
+                  "value": "${PRIORITY}",
+                  "inline": true
+                },
+                {
+                  "name": "📋 Issue Number",
+                  "value": "#${ISSUE_NUMBER}",
+                  "inline": true
+                }
+              ],
+              "footer": {
+                "text": "Theme Requests Repository"
+              },
+              "timestamp": "${ISSUE_CREATED}"
+            }]
+          }
+          EOF
           
           # Send to Discord
           curl -H "Content-Type: application/json" \
                -X POST \
-               -d "{
-                 \"embeds\": [{
-                   \"title\": \"🎨 New Theme Request\",
-                   \"description\": \"**${{ github.event.issue.title }}**\",
-                   \"url\": \"${{ github.event.issue.html_url }}\",
-                   \"color\": 3715860,
-                   \"fields\": [
-                     {
-                       \"name\": \"👤 Submitted by\",
-                       \"value\": \"[${{ github.event.issue.user.login }}](https://github.com/${{ github.event.issue.user.login }})\",
-                       \"inline\": true
-                     },
-                     {
-                       \"name\": \"🎯 Theme Type\",
-                       \"value\": \"${THEME_TYPE}\",
-                       \"inline\": true
-                     },
-                     {
-                       \"name\": \"⚡ Priority\",
-                       \"value\": \"${PRIORITY}\",
-                       \"inline\": true
-                     },
-                     {
-                       \"name\": \"📋 Issue Number\",
-                       \"value\": \"#${{ github.event.issue.number }}\",
-                       \"inline\": true
-                     }
-                   ],
-                   \"footer\": {
-                     \"text\": \"Theme Requests Repository\"
-                   },
-                   \"timestamp\": \"${{ github.event.issue.created_at }}\"
-                 }]
-               }" \
+               -d @payload.json \
                $DISCORD_WEBHOOK
