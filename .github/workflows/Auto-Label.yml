@@ -1,0 +1,57 @@
+name: Auto-Label Theme Requests
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  add-labels:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Add labels based on form content
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const body = issue.body || '';
+            
+            // Array to store labels to add
+            const labelsToAdd = [];
+            
+            // Check for theme type
+            if (body.includes('### Theme Type')) {
+              if (body.includes('Vencord') && body.includes('BetterDiscord') || body.includes('Both')) {
+                labelsToAdd.push('type:both');
+              } else if (body.includes('Vencord')) {
+                labelsToAdd.push('type:vencord');
+              } else if (body.includes('BetterDiscord')) {
+                labelsToAdd.push('type:betterdiscord');
+              }
+            }
+            
+            // Check for priority
+            if (body.includes('### Priority Level')) {
+              if (body.includes('Low - Just an idea')) {
+                labelsToAdd.push('priority:low');
+              } else if (body.includes('Medium - Would be nice')) {
+                labelsToAdd.push('priority:medium');
+              } else if (body.includes('High - Really want')) {
+                labelsToAdd.push('priority:high');
+              } else if (body.includes('Urgent - Need this ASAP')) {
+                labelsToAdd.push('priority:urgent');
+              }
+            }
+            
+            // Add the labels if any were found
+            if (labelsToAdd.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: labelsToAdd
+              });
+              
+              console.log(`Added labels: ${labelsToAdd.join(', ')}`);
+            }

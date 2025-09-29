@@ -2,6 +2,8 @@ name: 🎨 Theme Request
 description: Request a custom theme for Vencord or BetterDiscord
 title: "🎨 Theme Request: "
 labels: ["theme-request"]
+assignees:
+  - estrogenhrt
 body:
   - type: markdown
     attributes:
