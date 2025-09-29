@@ -1,14 +1,83 @@
-name: Discord Theme Request Notification
+name: Theme Request Handler
 
 on:
   issues:
-    types: [opened, labeled]
+    types: [opened]
 
 jobs:
-  notify-discord:
+  process-theme-request:
     if: contains(github.event.issue.labels.*.name, 'theme-request')
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
     steps:
+      - name: Add labels based on form content
+        uses: actions/github-script@v7
+        id: add-labels
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const body = issue.body || '';
+            
+            // Array to store labels to add
+            const labelsToAdd = [];
+            
+            // Check for theme type
+            if (body.includes('### Theme Type')) {
+              if (body.includes('Both Vencord & BetterDiscord')) {
+                labelsToAdd.push('type:both');
+              } else if (body.includes('Vencord') && !body.includes('BetterDiscord')) {
+                labelsToAdd.push('type:vencord');
+              } else if (body.includes('BetterDiscord') && !body.includes('Vencord')) {
+                labelsToAdd.push('type:betterdiscord');
+              }
+            }
+            
+            // Check for priority
+            if (body.includes('### Priority Level')) {
+              if (body.includes('Low - Just an idea')) {
+                labelsToAdd.push('priority:low');
+              } else if (body.includes('Medium - Would be nice')) {
+                labelsToAdd.push('priority:medium');
+              } else if (body.includes('High - Really want')) {
+                labelsToAdd.push('priority:high');
+              } else if (body.includes('Urgent - Need this ASAP')) {
+                labelsToAdd.push('priority:urgent');
+              }
+            }
+            
+            // Add the labels if any were found
+            if (labelsToAdd.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: labelsToAdd
+              });
+              
+              console.log(`Added labels: ${labelsToAdd.join(', ')}`);
+            }
+            
+            // Return labels as output for next step
+            return labelsToAdd.join(' ');
+          result-encoding: string
+
+      - name: Get updated issue with labels
+        uses: actions/github-script@v7
+        id: get-issue
+        with:
+          script: |
+            const issue = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number
+            });
+            
+            const labels = issue.data.labels.map(l => l.name).join(' ');
+            core.setOutput('labels', labels);
+            return labels;
+          result-encoding: string
+
       - name: Send Discord Notification
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
@@ -17,30 +86,29 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           ISSUE_USER: ${{ github.event.issue.user.login }}
           ISSUE_CREATED: ${{ github.event.issue.created_at }}
+          ISSUE_LABELS: ${{ steps.get-issue.outputs.labels }}
         run: |
           # Extract theme type and priority from labels
           THEME_TYPE="Not specified"
           PRIORITY="Not specified"
           
-          LABELS="${{ join(github.event.issue.labels.*.name, ' ') }}"
-          
           # Parse labels for theme type
-          if echo "$LABELS" | grep -q "type:vencord"; then
+          if echo "$ISSUE_LABELS" | grep -q "type:vencord"; then
             THEME_TYPE="Vencord"
-          elif echo "$LABELS" | grep -q "type:betterdiscord"; then
+          elif echo "$ISSUE_LABELS" | grep -q "type:betterdiscord"; then
             THEME_TYPE="BetterDiscord"
-          elif echo "$LABELS" | grep -q "type:both"; then
-            THEME_TYPE="Both"
+          elif echo "$ISSUE_LABELS" | grep -q "type:both"; then
+            THEME_TYPE="Both Vencord & BetterDiscord"
           fi
           
           # Parse labels for priority
-          if echo "$LABELS" | grep -q "priority:low"; then
+          if echo "$ISSUE_LABELS" | grep -q "priority:low"; then
             PRIORITY="🟢 Low"
-          elif echo "$LABELS" | grep -q "priority:medium"; then
+          elif echo "$ISSUE_LABELS" | grep -q "priority:medium"; then
             PRIORITY="🟡 Medium"
-          elif echo "$LABELS" | grep -q "priority:high"; then
+          elif echo "$ISSUE_LABELS" | grep -q "priority:high"; then
             PRIORITY="🟠 High"
-          elif echo "$LABELS" | grep -q "priority:urgent"; then
+          elif echo "$ISSUE_LABELS" | grep -q "priority:urgent"; then
             PRIORITY="🔴 Urgent"
           fi
           
@@ -87,3 +155,5 @@ jobs:
                -X POST \
                -d @payload.json \
                $DISCORD_WEBHOOK
+          
+          echo "Discord notification sent!"
